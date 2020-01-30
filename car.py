@@ -5,8 +5,10 @@ Created by Jacob Sommer 2020-01-20
 import math
 from time import sleep
 import RPi.GPIO as GPIO
-from flask import Flask
-from flask import request
+from flask import Flask, request, render_template, Response
+from camera import VideoCamera
+
+video_camera = VideoCamera() # creates a camera object
 
 # define the ports the IN1-4 for the motor board are connected to
 # based on the number coming after GPIO (BCM numbering mode) ex: IN1 is connected to port 11/GPIO17 which is 17
@@ -90,6 +92,21 @@ def route_turn():
   '''
   turn(float(request.form['value']))
   return 'Turn'
+
+@app.route('/videotest')
+def video_test():
+  return render_template('video.html')
+
+def gen(camera):
+  while True:
+    frame = camera.get_frame()
+    yield (b'--frame\r\n'
+            b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n\r\n')
+
+@app.route('/video_feed')
+def video_feed():
+  return Response(gen(video_camera),
+                  mimetype='multipart/x-mixed-replace; boundary=frame')
 
 if __name__ == '__main__': # if this file is launched directly
   app.run(host='0.0.0.0', debug=True, port=5000) # run Flask app
