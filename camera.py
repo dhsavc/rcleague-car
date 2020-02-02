@@ -1,24 +1,23 @@
-import cv2
-from imutils.video.pivideostream import PiVideoStream
-import imutils
+import io
 import time
-import numpy as np
+import picamera
+from base_camera import BaseCamera
 
-class VideoCamera(object):
-  def __init__(self, flip = False):
-    self.vs = PiVideoStream().start()
-    self.flip = flip
-    time.sleep(2.0)
 
-  def __del__(self):
-    self.vs.stop()
+class Camera(BaseCamera):
+    @staticmethod
+    def frames():
+        with picamera.PiCamera() as camera:
+            # let camera warm up
+            time.sleep(2)
 
-  def flip_if_needed(self, frame):
-    if self.flip:
-      return np.flip(frame, 0)
-    return frame
+            stream = io.BytesIO()
+            for _ in camera.capture_continuous(stream, 'jpeg',
+                                                 use_video_port=True):
+                # return current frame
+                stream.seek(0)
+                yield stream.read()
 
-  def get_frame(self):
-    frame = self.flip_if_needed(self.vs.read())
-    ret, jpeg = cv2.imencode('.jpg', frame)
-    return jpeg.tobytes()
+                # reset stream for next frame
+                stream.seek(0)
+                stream.truncate()

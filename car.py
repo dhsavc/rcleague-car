@@ -4,11 +4,13 @@ Created by Jacob Sommer 2020-01-20
 '''
 import math
 from time import sleep
+import atexit
 import RPi.GPIO as GPIO
 from flask import Flask, request, render_template, Response
-from camera import VideoCamera
+# from flask_assets import Bundle, Environment
+from camera import Camera
 
-video_camera = VideoCamera() # creates a camera object
+video_camera = Camera() # creates a camera object
 
 # define the ports the IN1-4 for the motor board are connected to
 # based on the number coming after GPIO (BCM numbering mode) ex: IN1 is connected to port 11/GPIO17 which is 17
@@ -42,60 +44,60 @@ turn_pwm.start(TURN_SPEED)
 
 
 def drive(value):
-  '''
-  Drive at the specified speed in the specified direction
-  value - float between -1 and 1, raw input value
-  '''
-  if value > 0: # forward
-    GPIO.output(IN1, False)
-    GPIO.output(IN2, True)
-    drive_pwm.ChangeDutyCycle(int(DRIVE_SPEED * value))
-  elif value < 0: # backward
-    GPIO.output(IN1, True)
-    GPIO.output(IN2, False)
-    drive_pwm.ChangeDutyCycle(int(DRIVE_SPEED * -value))
-  else:
-    GPIO.output(IN1, False)
-    GPIO.output(IN2, False)
+    '''
+    Drive at the specified speed in the specified direction
+    value - float between -1 and 1, raw input value
+    '''
+    if value > 0: # forward
+        GPIO.output(IN1, False)
+        GPIO.output(IN2, True)
+        drive_pwm.ChangeDutyCycle(int(DRIVE_SPEED * value))
+    elif value < 0: # backward
+        GPIO.output(IN1, True)
+        GPIO.output(IN2, False)
+        drive_pwm.ChangeDutyCycle(int(DRIVE_SPEED * -value))
+    else:
+        GPIO.output(IN1, False)
+        GPIO.output(IN2, False)
 
 def turn(value):
-  '''
-  Turn at the specified speed in the specified direction
-  value - float between -1 and 1, raw input value
-  '''
-  if value > 0: # forward
-    GPIO.output(IN3, True)
-    GPIO.output(IN4, False)
-    turn_pwm.ChangeDutyCycle(int(TURN_SPEED * value))
-  elif value < 0: # backward
-    GPIO.output(IN3, False)
-    GPIO.output(IN4, True)
-    turn_pwm.ChangeDutyCycle(int(TURN_SPEED * -value))
-  else:
-    GPIO.output(IN3, False)
-    GPIO.output(IN4, False)
+    '''
+    Turn at the specified speed in the specified direction
+    value - float between -1 and 1, raw input value
+    '''
+    if value > 0: # forward
+        GPIO.output(IN3, True)
+        GPIO.output(IN4, False)
+        turn_pwm.ChangeDutyCycle(int(TURN_SPEED * value))
+    elif value < 0: # backward
+        GPIO.output(IN3, False)
+        GPIO.output(IN4, True)
+        turn_pwm.ChangeDutyCycle(int(TURN_SPEED * -value))
+    else:
+        GPIO.output(IN3, False)
+        GPIO.output(IN4, False)
 
 app = Flask(__name__) # create Flask app object
 
 @app.route('/drive', methods=['POST'])
 def route_drive():
-  '''
-  Listen for POST requests to /drive and process them
-  '''
-  drive(float(request.form['value']))
-  return 'Drive'
+    '''
+    Listen for POST requests to /drive and process them
+    '''
+    drive(float(request.form['value']))
+    return 'Drive'
 
 @app.route('/turn', methods=['POST'])
 def route_turn():
-  '''
-  Listen for POST requests to /turn and process them
-  '''
-  turn(float(request.form['value']))
-  return 'Turn'
+    '''
+    Listen for POST requests to /turn and process them
+    '''
+    turn(float(request.form['value']))
+    return 'Turn'
 
-@app.route('/videotest')
-def video_test():
-  return render_template('video.html')
+@app.route('/')
+def index():
+    return render_template('index.html')
 
 def gen(camera):
   while True:
@@ -109,5 +111,11 @@ def video_feed():
                   mimetype='multipart/x-mixed-replace; boundary=frame')
 
 if __name__ == '__main__': # if this file is launched directly
-  app.run(host='0.0.0.0', debug=True, port=5000) # run Flask app
-GPIO.cleanup() # clean up GPIO pins after app closed
+    app.run(host='0.0.0.0', debug=True, port=5000) # run Flask app
+
+@atexit.register
+def cleanup():
+    '''
+    Cleans up GPIO pins when app is closed
+    '''
+    GPIO.cleanup()
