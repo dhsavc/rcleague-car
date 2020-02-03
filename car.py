@@ -111,7 +111,7 @@ def video_feed():
                   mimetype='multipart/x-mixed-replace; boundary=frame')
 
 if __name__ == '__main__': # if this file is launched directly
-    app.run(host='0.0.0.0', debug=True, port=5000) # run Flask app
+    app.run(host='0.0.0.0', debug=True, port=5000, threaded=True) # run Flask app, threaded allows multiple requests to be handled at once
 
 @atexit.register
 def cleanup():
